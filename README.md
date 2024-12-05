@@ -4,72 +4,99 @@ Develop a code that shows some of the relevant characteistics of an aquifer (wat
 ## Relevance
 Generally, the analysis of the conditions of an aquifer starts with the collection of data such as the depth to the water level. However, this information is difficult to interpret quickly because the topographic altitude is generally not linked to the altitude of the water level and it is necessary to perform spatial interpolation analysis to have an approximation of the conditions of the aquifer, which is usually time-consuming and requires resources. Therefore, a model that helps to visualize and generate data on the conditions of the aquifer quickly is very useful to generate deeper analysis or to know the areas in which a greater amount of data is required to be analyzed.
 ## Flow process
-### Analyze the spatial reference for the input layer
-  -Review if the cordinate system for both layers is the same
-    -If the coordinate system is diferent ask to the user a EPSG code for reproject the layers and save this layers in the output geodatabase.
 
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": 4,
-   "id": "50c6f2dd-cd6f-481e-9a1c-cf864daf4607",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "The coordinate system for the Well data points is: Albers_NHG (0) and the coordinate system for the DEM is: GCS_North_American_1983 (4269)\n",
-      "A reprojection is needed for develop this analysis\n"
-     ]
-    },
-    {
-     "name": "stdin",
-     "output_type": "stream",
-     "text": [
-      "Enter the EPSG code to project both layers:  102003\n"
-     ]
-    }
-   ],
-   "source": [
-    "desc_fc = arcpy.Describe(wellData)\n",
-    "desc_raster = arcpy.Raster(DEM)\n",
-    "if desc_fc.spatialReference.factoryCode != desc_raster.spatialReference.factoryCode:\n",
-    "    print(f\"The coordinate system for the Well data points is: {desc_fc.spatialReference.name} ({desc_fc.spatialReference.factoryCode}) and the coordinate system for the DEM is: {desc_raster.spatialReference.name} ({desc_raster.spatialReference.factoryCode})\")\n",
-    "    print(\"A reprojection is needed for develop this analysis\")\n",
-    "    CS = int(input(\"Enter the EPSG code to project both layers: \"))\n",
-    "    arcpy.management.Project(wellData,\"AquiferProperties.gdb\\\\welldData_RP\",arcpy.SpatialReference(CS))\n",
-    "    arcpy.management.ProjectRaster(DEM, \"AquiferProperties.gdb\\\\DEM_RP\", arcpy.SpatialReference(CS))\n",
-    "    wellData = \"AquiferProperties.gdb\\\\welldData_RP\"\n",
-    "    DEM = \"AquiferProperties.gdb\\\\DEM_RP\""
-   ]
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python 3 (ipykernel)",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.12.3"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+### Analyze the spatial reference for the input layers
+- Review if the cordinate system for both layers is the same.
+  - If the coordinate system is diferent ask to the user a EPSG code for reproject the layers and save this layers in the output geodatabase.
 
-###Calculate the water table altitude
-  -List the fields in the well data points layer for select the field that contains the water depht
+
+```python
+# Analyze the spatial reference for the input layers and reproject if is needed.
+desc_fc = arcpy.Describe(wellData)
+desc_raster = arcpy.Raster(DEM)
+if desc_fc.spatialReference.factoryCode != desc_raster.spatialReference.factoryCode:
+    print(f"The coordinate system for the Well data points is: {desc_fc.spatialReference.name} ({desc_fc.spatialReference.factoryCode}) and the coordinate system for the DEM is: {desc_raster.spatialReference.name} ({desc_raster.spatialReference.factoryCode})")
+    print("A reprojection is needed for develop this analysis")
+    CS = int(input("Enter the EPSG code to project both layers: "))
+    arcpy.management.Project(wellData,"AquiferProperties.gdb\\welldData_RP",arcpy.SpatialReference(CS))
+    arcpy.management.ProjectRaster(DEM, "AquiferProperties.gdb\\DEM_RP", arcpy.SpatialReference(CS))
+    wellData = "AquiferProperties.gdb\\welldData_RP"
+    DEM = "AquiferProperties.gdb\\DEM_RP"
+    print("-------------------------------------------------------------------------")
+```
+<p align="center">
+Script 1. Analyze the spatial reference for the input layers and reproject it if is needed.
+</p>
+
+### Calculate the water table altitude for each well point
+- List the fields in the well data points layer for select the field that contains the water depht.
+- Add the altitude from the DEM to each well data point.
+- Substract well altitude to the water depth to obtain the water table altitude.
+```python
+# List the fields in Well data points layer.
+  fields = arcpy.ListFields(wellData)
+  print(f"The field names in the layer {wellData} are:")
   
+  # Print the name for each field in the layer.
+  for field in fields:
+      print(field.name, end = ", ")
 
+  # Ask the user to enter the field that contains the well depth to water.
+  wellDepthField = input("Enter the field that contains the well depth to water: ")
+
+  # Extracts DEM values to the well data points to create a new feature class.
+  arcpy.sa.ExtractValuesToPoints(wellData, DEM, "AquiferProperties.gdb\\welldData_v2")
+  wellData2 = "AquiferProperties.gdb\\welldData_v2"
+```
+<p align="center">
+Script 2. Calculate the water table altitude for each well point.
+</p>
+
+### Calculate the water table altitude surface and its standard error
+The script uses a Epirical Bayesian Kriging interpolation model with a generic configuration for calculate the water table altitude surface and its standard error from the water table altitude points following the next logic:
+- Set the local variables for the interpolation
+- Set the neighbourhood search variables
+- Calculate the interpolation prediction for the water table altitude with the Empirical Bayesian Kriging model
+- Calculate the interpolation standard error
+
+```python
+# Set local variables for the interpolation.
+inPointFeatures = "welldData_v2"
+zField = "WaterAltitude"
+outLayer = "outEBK_GA"
+outRaster = "EBK_predict"
+transformation = "NONE"
+maxLocalPoints = 30
+overlapFactor = 0.5
+numberSemivariograms = 100
+
+# Set variables for search neighborhood.
+radius = 50000
+smooth = 0.4
+searchNeighbourhood = arcpy.SearchNeighborhoodSmoothCircular(radius, smooth)
+outputType = "PREDICTION"
+quantileValue = ""
+thresholdType = ""
+probabilityThreshold = ""
+semivariogram = "POWER"
+
+# Execute Empirical Bayesian Kriging for calculate the prediction.
+arcpy.EmpiricalBayesianKriging_ga(inPointFeatures, zField, outLayer, outRaster,
+                                  cellSize, transformation, maxLocalPoints, overlapFactor, numberSemivariograms,
+                                  searchNeighbourhood, outputType, quantileValue, thresholdType, probabilityThreshold,
+                                  semivariogram)
+
+# Execute Empirical Bayesian Kriging for calculate the prediction standard error.
+outRaster = "EBK_SE"
+outputType = "PREDICTION_STANDARD_ERROR"
+arcpy.EmpiricalBayesianKriging_ga(inPointFeatures, zField, outLayer, outRaster,
+                                  cellSize, transformation, maxLocalPoints, overlapFactor, numberSemivariograms,
+                                  searchNeighbourhood, outputType, quantileValue, thresholdType, probabilityThreshold,
+                                  semivariogram)
+```
+<p align="center">
+Script 3. Calculate the water table altitude surface and its standard error.
+</p>
+
+### Caluculate the Vadose Zone Tickness
+- Substract the water table altitude surface to the DEM
