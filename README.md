@@ -7,41 +7,67 @@ Generally, the analysis of the conditions of an aquifer starts with the collecti
 ### Analyze the spatial reference for the input layer
   -Review if the cordinate system for both layers is the same
     -If the coordinate system is diferent ask to the user a EPSG code for reproject the layers and save this layers in the output geodatabase.
+
 {
- "cell_type": "code",
- "execution_count": 4,
- "id": "50c6f2dd-cd6f-481e-9a1c-cf864daf4607",
- "metadata": {},
- "outputs": [
+ "cells": [
   {
-   "name": "stdout",
-   "output_type": "stream",
-   "text": [
-    "The coordinate system for the Well data points is: Albers_NHG (0) and the coordinate system for the DEM is: GCS_North_American_1983 (4269)\n",
-    "A reprojection is needed for develop this analysis\n"
-   ]
-  },
-  {
-   "name": "stdin",
-   "output_type": "stream",
-   "text": [
-    "Enter the EPSG code to project both layers:  102003\n"
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "50c6f2dd-cd6f-481e-9a1c-cf864daf4607",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "The coordinate system for the Well data points is: Albers_NHG (0) and the coordinate system for the DEM is: GCS_North_American_1983 (4269)\n",
+      "A reprojection is needed for develop this analysis\n"
+     ]
+    },
+    {
+     "name": "stdin",
+     "output_type": "stream",
+     "text": [
+      "Enter the EPSG code to project both layers:  102003\n"
+     ]
+    }
+   ],
+   "source": [
+    "desc_fc = arcpy.Describe(wellData)\n",
+    "desc_raster = arcpy.Raster(DEM)\n",
+    "if desc_fc.spatialReference.factoryCode != desc_raster.spatialReference.factoryCode:\n",
+    "    print(f\"The coordinate system for the Well data points is: {desc_fc.spatialReference.name} ({desc_fc.spatialReference.factoryCode}) and the coordinate system for the DEM is: {desc_raster.spatialReference.name} ({desc_raster.spatialReference.factoryCode})\")\n",
+    "    print(\"A reprojection is needed for develop this analysis\")\n",
+    "    CS = int(input(\"Enter the EPSG code to project both layers: \"))\n",
+    "    arcpy.management.Project(wellData,\"AquiferProperties.gdb\\\\welldData_RP\",arcpy.SpatialReference(CS))\n",
+    "    arcpy.management.ProjectRaster(DEM, \"AquiferProperties.gdb\\\\DEM_RP\", arcpy.SpatialReference(CS))\n",
+    "    wellData = \"AquiferProperties.gdb\\\\welldData_RP\"\n",
+    "    DEM = \"AquiferProperties.gdb\\\\DEM_RP\""
    ]
   }
  ],
- "source": [
-  "desc_fc = arcpy.Describe(wellData)\n",
-  "desc_raster = arcpy.Raster(DEM)\n",
-  "if desc_fc.spatialReference.factoryCode != desc_raster.spatialReference.factoryCode:\n",
-  "    print(f\"The coordinate system for the Well data points is: {desc_fc.spatialReference.name} ({desc_fc.spatialReference.factoryCode}) and the coordinate system for the DEM is: {desc_raster.spatialReference.name} ({desc_raster.spatialReference.factoryCode})\")\n",
-  "    print(\"A reprojection is needed for develop this analysis\")\n",
-  "    CS = int(input(\"Enter the EPSG code to project both layers: \"))\n",
-  "    arcpy.management.Project(wellData,\"AquiferProperties.gdb\\\\welldData_RP\",arcpy.SpatialReference(CS))\n",
-  "    arcpy.management.ProjectRaster(DEM, \"AquiferProperties.gdb\\\\DEM_RP\", arcpy.SpatialReference(CS))\n",
-  "    wellData = \"AquiferProperties.gdb\\\\welldData_RP\"\n",
-  "    DEM = \"AquiferProperties.gdb\\\\DEM_RP\""
- ]
-},
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.12.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
 
 ###Calculate the water table altitude
   -List the fields in the well data points layer for select the field that contains the water depht
