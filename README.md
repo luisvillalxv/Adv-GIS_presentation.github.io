@@ -28,10 +28,16 @@ if desc_fc.spatialReference.factoryCode != desc_raster.spatialReference.factoryC
 Script 1. Analyze the spatial reference for the input layers and reproject it if is needed.
 </p>
 
+![image](https://github.com/user-attachments/assets/8f937ea6-b22b-4c2e-b95f-322a084ea1a3)
+<p align="center">
+Figure 1. Example output when the input layers have different coordinate system
+</p>
+
 ### Calculate the water table altitude for each well point
 - List the fields in the well data points layer for select the field that contains the water depht.
 - Add the altitude from the DEM to each well data point.
 - Substract well altitude to the water depth to obtain the water table altitude.
+
 ```python
 # List the fields in Well data points layer.
   fields = arcpy.ListFields(wellData)
@@ -52,12 +58,19 @@ Script 1. Analyze the spatial reference for the input layers and reproject it if
 Script 2. Calculate the water table altitude for each well point.
 </p>
 
+![image](https://github.com/user-attachments/assets/d32ac6df-c760-47aa-8ec4-841bd2f95d7a)
+<p align="center">
+Figure 2. Example output to show the user the fields in the attribute table of the well points layer
+</p>
+
 ### Calculate the water table altitude surface and its standard error
 The script uses a Epirical Bayesian Kriging interpolation model with a generic configuration for calculate the water table altitude surface and its standard error from the water table altitude points following the next logic:
 - Set the local variables for the interpolation
 - Set the neighbourhood search variables
 - Calculate the interpolation prediction for the water table altitude with the Empirical Bayesian Kriging model
 - Calculate the interpolation standard error
+- Add aditional basemaps
+- Show the resultant m
 
 ```python
 # Set local variables for the interpolation.
@@ -100,3 +113,255 @@ Script 3. Calculate the water table altitude surface and its standard error.
 
 ### Caluculate the Vadose Zone Tickness
 - Substract the water table altitude surface to the DEM
+
+```python
+vzt = arcpy.sa.RasterCalculator([DEM, "AquiferProperties.gdb\\EBK_predict"], ["x", "y"], "x-y", "LastOf", "LastOf")
+vzt.save(directoryPath + "\\AquiferProperties.gdb\\VZT")
+```
+<p align="center">
+Script 3. Calculate the Vadose Zone Thickness
+</p>
+
+### Generate the visualization of the result layers with folium
+- Create a folium map
+- Reproject each layer to WGS 1984 Geographic Coordinate System
+- Add the layer to the folium map
+- Create a legend for each map
+- Add a layer control
+- Show the folium map with the layers
+
+```python
+#Add the Water table altitude layer to the folium map for create a results visualization
+png_route_wta = directoryPath + "\\WaterTableAltitude.png"
+
+arcpy.management.ProjectRaster("\\AquiferProperties.gdb\\EBK_predict", "\\AquiferProperties.gdb\\raster_wgs84", arcpy.SpatialReference(4326))
+raster_obj = arcpy.Raster("\\AquiferProperties.gdb\\raster_wgs84")
+
+val_min = raster_obj.minimum
+val_max = raster_obj.maximum
+array_raster = arcpy.RasterToNumPyArray(raster_obj)
+masked_array = np.ma.masked_where(array_raster == raster_obj.noDataValue, array_raster)
+
+colors = plt.cm.terrain(np.linspace(0, 1, 256))
+cmap = ListedColormap(colors)
+
+norm = plt.Normalize(vmin=val_min, vmax=val_max)
+colored_array = cmap(norm(masked_array))
+
+plt.imsave(png_route_wta, colored_array)
+
+extent = raster_obj.extent
+bounds = [[extent.YMin, extent.XMin], [extent.YMax, extent.XMax]]
+
+m = folium.Map(location=[(extent.YMin + extent.YMax) / 2, (extent.XMin + extent.XMax) / 2], zoom_start=7)
+
+folium.raster_layers.ImageOverlay(
+    image=png_route_wta,
+    bounds=bounds,
+    opacity=0.7,
+    name="Water Table Altitude"
+).add_to(m)
+
+
+
+# Add the DEM layer to the folium map.
+png_route_dem = directoryPath + "\\dem.png"
+
+arcpy.management.ProjectRaster(DEM, "\\AquiferProperties.gdb\\raster_wgs84", arcpy.SpatialReference(4326))
+raster_obj = arcpy.Raster("\\AquiferProperties.gdb\\raster_wgs84")
+
+val_min = raster_obj.minimum
+val_max = raster_obj.maximum
+array_raster = arcpy.RasterToNumPyArray(raster_obj)
+masked_array = np.ma.masked_where(array_raster == raster_obj.noDataValue, array_raster)
+
+colors = plt.cm.terrain(np.linspace(0, 1, 256))
+cmap = ListedColormap(colors)
+
+norm = plt.Normalize(vmin=val_min, vmax=val_max)
+colored_array = cmap(norm(masked_array))
+
+plt.imsave(png_route_dem, colored_array)
+
+extent = raster_obj.extent
+bounds = [[extent.YMin, extent.XMin], [extent.YMax, extent.XMax]]
+
+m = folium.Map(location=[(extent.YMin + extent.YMax) / 2, (extent.XMin + extent.XMax) / 2], zoom_start=7)
+
+folium.raster_layers.ImageOverlay(
+    image=png_route_dem,
+    bounds=bounds,
+    opacity=0.7,
+    name="DEM"
+).add_to(m)
+
+
+# Add the well data points layer to the folium map.
+arcpy.conversion.FeaturesToJSON(wellData2, "WellData.geojson", "FORMATTED", "NO_Z_VALUES", "NO_M_VALUES", "GEOJSON", "WGS84")
+folium.GeoJson(directoryPath + "\\WellData.geojson", name = "Well points", popup = folium.GeoJsonPopup(fields=["WaterDepth"]), tooltip = "Click for details").add_to(m)
+
+
+# Add the standard error layer to the folium map.
+png_route_se = directoryPath + "\\InterpolationError.png"
+
+arcpy.management.ProjectRaster("\\AquiferProperties.gdb\\EBK_SE", "\\AquiferProperties.gdb\\raster_wgs84", arcpy.SpatialReference(4326))
+raster_obj = arcpy.Raster("\\AquiferProperties.gdb\\raster_wgs84")
+
+val_min = raster_obj.minimum
+val_max = raster_obj.maximum
+array_raster = arcpy.RasterToNumPyArray(raster_obj)
+masked_array = np.ma.masked_where(array_raster == raster_obj.noDataValue, array_raster)
+
+colors = plt.cm.bwr(np.linspace(0, 1, 256))
+cmap = ListedColormap(colors)
+
+norm = plt.Normalize(vmin=val_min, vmax=val_max)
+colored_array = cmap(norm(masked_array))
+
+plt.imsave(png_route_se, colored_array)
+
+extent = raster_obj.extent
+bounds = [[extent.YMin, extent.XMin], [extent.YMax, extent.XMax]]
+
+
+folium.raster_layers.ImageOverlay(
+    image=png_route_se,
+    bounds=bounds,
+    opacity=0.7,
+    name="Interpolation standard error"
+).add_to(m)
+
+
+
+# Add the Vadose Zone Thickness layer to the folium map.
+png_route_vzt = directoryPath + "\\Vadose Zone Thickness.png"
+arcpy.management.ProjectRaster("\\AquiferProperties.gdb\\VZT", "\\AquiferProperties.gdb\\raster_wgs84", arcpy.SpatialReference(4326))
+raster_obj = arcpy.Raster("\\AquiferProperties.gdb\\raster_wgs84")
+array_raster = arcpy.RasterToNumPyArray(raster_obj)
+masked_array = np.ma.masked_where(array_raster == raster_obj.noDataValue, array_raster)
+
+ranks = [-0.1, 0, 3, 5, 10, 15, 20, 30, 50, 100] 
+colors = ["#000000", "#f7fcfd", "#e0ecf4", "#bfd3e6", "#9ebcda", "#8c96c6", "#8c6bb1", "#88419d", "#810f7c", "#4d004b"]
+cmap = ListedColormap(colors)
+
+ranks_array = np.digitize(masked_array, ranks, right=True) - 1
+colored_array = cmap(ranks_array)
+
+plt.imsave(png_route_vzt, colored_array)
+
+extent = raster_obj.extent
+bounds = [[extent.YMin, extent.XMin], [extent.YMax, extent.XMax]]
+
+folium.raster_layers.ImageOverlay(
+    image=png_route_vzt,
+    bounds=bounds,
+    opacity=0.7,
+    name="Vadose Zone Thickness"
+).add_to(m)
+
+
+# Add the layers legend to the folium map.
+legend_html_vzt = """
+ <div style="position: fixed; 
+             bottom: 0px; left: 0px; width: 150px; height: auto; 
+             border:2px solid grey; background-color: white; z-index:9999;
+             font-size:14px;">
+ &nbsp; <b>Vadose Zone Thickness</b> <br>
+ """
+
+for i in range(len(ranks) - 1):
+    legend_html_vzt += f'&nbsp; <i style="background-color:{colors[i]}; width: 30px; height: 20px; display: inline-block;"></i> {ranks[i]:.1f} - {ranks[i + 1]:.1f} <br>'
+
+legend_html_vzt += "</div>"
+
+
+# Water Table Altitude legend.
+legend_html_wta = """
+     <div style="position: fixed; 
+                 bottom: 0px; left: 150px; width: 150px; height: auto; 
+                 border:2px solid grey; background-color: white; z-index:9999;
+                 font-size:14px;">
+     &nbsp; <b>Water Table Altitude (masl)</b> <br>
+     """
+
+num_colors = 9 
+for i in range(num_colors):
+    color = plt.cm.terrain(i / num_colors)
+    legend_html_wta += f'&nbsp; <i style="background-color:rgb({int(color[0]*255)},{int(color[1]*255)},{int(color[2]*255)}); width: 30px; height: 20px; display: inline-block;"></i> {val_min + i * (val_max - val_min) / num_colors:.1f} - {val_min + (i + 1) * (val_max - val_min) / num_colors:.1f} <br>'
+
+legend_html_wta += "</div>"
+
+
+# DEM legend.
+legend_html_dem = """
+     <div style="position: fixed; 
+                 bottom: 0px; left: 300px; width: 150px; height: auto; 
+                 border:2px solid grey; background-color: white; z-index:9999;
+                 font-size:14px;">
+     &nbsp; <b>DEM (masl)</b> <br>
+     """
+
+num_colors = 9 
+for i in range(num_colors):
+    color = plt.cm.terrain(i / num_colors)
+    legend_html_dem += f'&nbsp; <i style="background-color:rgb({int(color[0]*255)},{int(color[1]*255)},{int(color[2]*255)}); width: 30px; height: 20px; display: inline-block;"></i> {val_min + i * (val_max - val_min) / num_colors:.1f} - {val_min + (i + 1) * (val_max - val_min) / num_colors:.1f} <br>'
+
+
+legend_html_dem += "</div>"
+
+
+
+# Standard error legend.
+legend_html_se = """
+     <div style="position: fixed; 
+                 bottom: 0px; left: 450px; width: 150px; height: auto; 
+                 border:2px solid grey; background-color: white; z-index:9999;
+                 font-size:14px;">
+     &nbsp; <b>Standard error</b> <br>
+     """
+
+num_colors = 9 
+for i in range(num_colors):
+    color = plt.cm.bwr(i / num_colors)
+    legend_html_se += f'&nbsp; <i style="background-color:rgb({int(color[0]*255)},{int(color[1]*255)},{int(color[2]*255)}); width: 30px; height: 20px; display: inline-block;"></i> {val_min + i * (val_max - val_min) / num_colors:.1f} - {val_min + (i + 1) * (val_max - val_min) / num_colors:.1f} <br>'
+
+legend_html_se += "</div>"
+
+
+m.get_root().html.add_child(folium.Element(legend_html_vzt))
+m.get_root().html.add_child(folium.Element(legend_html_wta))
+m.get_root().html.add_child(folium.Element(legend_html_dem))
+m.get_root().html.add_child(folium.Element(legend_html_se))
+
+
+# Add additional base maps to the folium map.
+TileLayer("CartoDB positron", name="CartoDB Positron").add_to(m)  
+TileLayer("CartoDB dark_matter", name="CartoDB Dark Matter").add_to(m) 
+folium.LayerControl().add_to(m)
+
+#Display the folium map
+display(m)
+```
+<p align="center">
+Script 3. Add the layers, legend, aditional basemaps and layer control to the folium map.
+</p>
+
+### Delete the temporary data
+- Clean the resultant geodatabase that contains the resultant layers
+- Clean the base workspace
+
+```python
+arcpy.management.Delete("dem.png")
+arcpy.management.Delete("InterpolationError.png")
+arcpy.management.Delete("Vadose Zone Thickness.png")
+arcpy.management.Delete("WaterTableAltitude.png")
+arcpy.management.Delete("\\AquiferProperties.gdb\\raster_wgs84")
+os.remove(directoryPath + "\\WellData.geojson")
+```
+<p align="center">
+Script 3. Delete the temporary data.
+</p>
+
+## Interactive map
+- As a result of the execution of the function, an interactive map is generated in which the resulting layers are presented. An example of this map is presented in the following link.
+[See map]
