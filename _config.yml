@@ -1,4 +1,7 @@
-title: test site
-#logo
-description: Environmental Engineer | PhD
+title: Adv. GIS project
+
+description: Luis Xavier Villasenor | PhD Student
+show_downloads: True
+github:
+  zip_url: http://example.com/download.zip
 theme: jekyll-theme-architect
