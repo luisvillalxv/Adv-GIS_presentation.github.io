@@ -365,3 +365,5 @@ Script 3. Delete the temporary data.
 ## Interactive map
 - As a result of the execution of the function, an interactive map is generated in which the resulting layers are presented. An example of this map is presented in the following link.
 [See map](https://github.com/luisvillalxv/Adv-GIS_presentation.github.io/blob/main/ExampleOfResultsInteractiveMap.html)
+
+<iframe src="ExampleOfResultsInteractiveMap.html" width="100%" height="600" style="border: none;"></iframe>
