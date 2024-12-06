@@ -1,8 +1,3 @@
 title: Adv. GIS project
-
 description: Luis Xavier Villasenor | PhD Student
-show_downloads: True
-download_links:
-  - url: "ruta/del/archivo1.zip"
-    text: "Descargar Archivo"
 theme: jekyll-theme-architect
