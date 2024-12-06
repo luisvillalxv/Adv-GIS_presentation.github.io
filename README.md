@@ -1,19 +1,18 @@
 # Aquifer properties function
 ## Objetive
-Develop a code that shows some of the relevant characteistics of an aquifer (water table altitude and vadose zone tickness) and create a geodata base that contains the layers with this information. As inputs for this code, the user needs to supply well points with the depth to water and a Digital Elevation Model (DEM). The output layers are intended to generate a quick visualization of the aquifer conditions, but the results should be verified because the code uses a generic interpolation model thac couldn't adjust in a valid way to the input data. For this reason, the results for this script also include a Standard Error Map that shows to the user the accuracy of the interpolation model.
+Develop a code that shows some of the relevant characteristics of an aquifer (water table altitude and vadose zone thickness) and creates a geodatabase that contains the layers with this information. As inputs for this code, the user needs to supply well points with the depth to water and a Digital Elevation Model (DEM). The output layers are intended to generate a quick visualization of the aquifer conditions, but the results should be verified because the code uses a generic interpolation model that may not adjust in a valid way to the input data. For this reason, the results for this script also include a Standard Error Map that shows the user the accuracy of the interpolation model.
 ## Relevance
-Generally, the analysis of the conditions of an aquifer starts with the collection of data such as the depth to the water level. However, this information is difficult to interpret quickly because the topographic altitude is generally not linked to the altitude of the water level and it is necessary to perform spatial interpolation analysis to have an approximation of the conditions of the aquifer, which is usually time-consuming and requires resources. Therefore, a model that helps to visualize and generate data on the conditions of the aquifer quickly is very useful to generate deeper analysis or to know the areas in which a greater amount of data is required to be analyzed.
+Generally, the analysis of the conditions of an aquifer starts with the collection of data such as the depth to the water level. However, this information is difficult to interpret quickly because the topographic altitude is generally not linked to the altitude of the water level, and it is necessary to perform spatial interpolation analysis to approximate the conditions of the aquifer, which is usually time-consuming and resource-intensive. Therefore, a model that helps visualize and generate data on the conditions of the aquifer quickly is very useful for generating deeper analysis or identifying areas where more data is needed.
 ## Link for download the aquifer properties function
 [Adv. GIS functions](https://github.com/luisvillalxv/Adv-GIS-project.git)
 ## Flow process
 
 ### Analyze the spatial reference for the input layers
-- Review if the cordinate system for both layers is the same.
-  - If the coordinate system is diferent ask to the user a EPSG code for reproject the layers and save this layers in the output geodatabase.
+- Review if the coordinate system for both layers is the same.
+  - If the coordinate system is different, ask the user for an EPSG code to reproject the layers and save these layers in the output geodatabase.
 
 
 ```python
-# Analyze the spatial reference for the input layers and reproject if is needed.
 desc_fc = arcpy.Describe(wellData)
 desc_raster = arcpy.Raster(DEM)
 if desc_fc.spatialReference.factoryCode != desc_raster.spatialReference.factoryCode:
@@ -26,19 +25,16 @@ if desc_fc.spatialReference.factoryCode != desc_raster.spatialReference.factoryC
     DEM = "AquiferProperties.gdb\\DEM_RP"
     print("-------------------------------------------------------------------------")
 ```
-<p align="center">
-Script 1. Analyze the spatial reference for the input layers and reproject it if is needed.
-</p>
+<p align="center">Script 1. Analyze the spatial reference for the input layers and reproject if needed.</p>
 
+ 
 ![image](https://github.com/user-attachments/assets/8f937ea6-b22b-4c2e-b95f-322a084ea1a3)
-<p align="center">
-Figure 1. Example output when the input layers have different coordinate system
-</p>
-
+<p align="center">Figure 1. Example output when the input layers have different coordinate systems.</p>
+ 
 ### Calculate the water table altitude for each well point
-- List the fields in the well data points layer for select the field that contains the water depht.
+- List the fields in the well data points layer to select the field that contains the water depth.
 - Add the altitude from the DEM to each well data point.
-- Substract well altitude to the water depth to obtain the water table altitude.
+- Subtract well altitude from the water depth to obtain the water table altitude.
 
 ```python
 # List the fields in Well data points layer.
@@ -56,23 +52,20 @@ Figure 1. Example output when the input layers have different coordinate system
   arcpy.sa.ExtractValuesToPoints(wellData, DEM, "AquiferProperties.gdb\\welldData_v2")
   wellData2 = "AquiferProperties.gdb\\welldData_v2"
 ```
-<p align="center">
-Script 2. Calculate the water table altitude for each well point.
-</p>
+<p align="center">Script 2. Calculate the water table altitude for each well point.</p>
 
+ 
 ![image](https://github.com/user-attachments/assets/d32ac6df-c760-47aa-8ec4-841bd2f95d7a)
-<p align="center">
-Figure 2. Example output to show the user the fields in the attribute table of the well points layer
-</p>
-
+<p align="center">Figure 2. Example output to show the user the fields in the attribute table of the well points layer</p>
+ 
 ### Calculate the water table altitude surface and its standard error
-The script uses a Epirical Bayesian Kriging interpolation model with a generic configuration for calculate the water table altitude surface and its standard error from the water table altitude points following the next logic:
-- Set the local variables for the interpolation
-- Set the neighbourhood search variables
-- Calculate the interpolation prediction for the water table altitude with the Empirical Bayesian Kriging model
-- Calculate the interpolation standard error
-- Add aditional basemaps
-- Show the resultant m
+The script uses an Empirical Bayesian Kriging interpolation model with a generic configuration to calculate the water table altitude surface and its standard error from the water table altitude points, following this logic:
+- Set the local variables for the interpolation.
+- Set the neighborhood search variables.
+- Calculate the interpolation prediction for the water table altitude using the Empirical Bayesian Kriging model.
+- Calculate the interpolation standard error.
+- Add additional basemaps.
+- Show the resultant map.
 
 ```python
 # Set local variables for the interpolation.
@@ -109,28 +102,24 @@ arcpy.EmpiricalBayesianKriging_ga(inPointFeatures, zField, outLayer, outRaster,
                                   searchNeighbourhood, outputType, quantileValue, thresholdType, probabilityThreshold,
                                   semivariogram)
 ```
-<p align="center">
-Script 3. Calculate the water table altitude surface and its standard error.
-</p>
+<p align="center">Script 3. Calculate the water table altitude surface and its standard error.</p>
 
 ### Caluculate the Vadose Zone Tickness
-- Substract the water table altitude surface to the DEM
+- Subtract the water table altitude surface from the DEM.
 
 ```python
 vzt = arcpy.sa.RasterCalculator([DEM, "AquiferProperties.gdb\\EBK_predict"], ["x", "y"], "x-y", "LastOf", "LastOf")
 vzt.save(directoryPath + "\\AquiferProperties.gdb\\VZT")
 ```
-<p align="center">
-Script 3. Calculate the Vadose Zone Thickness
-</p>
+<p align="center">Script 3. Calculate the Vadose Zone Thickness.</p>
 
-### Generate the visualization of the result layers with folium
-- Create a folium map
-- Reproject each layer to WGS 1984 Geographic Coordinate System
-- Add the layer to the folium map
-- Create a legend for each map
-- Add a layer control
-- Show the folium map with the layers
+### Generate the visualization of the result layers with Folium
+- Create a Folium map.
+- Reproject each layer to the WGS 1984 Geographic Coordinate System.
+- Add the layers to the Folium map.
+- Create a legend for each map.
+- Add a layer control.
+- Show the Folium map with the layers.
 
 ```python
 #Add the Water table altitude layer to the folium map for create a results visualization
@@ -344,13 +333,11 @@ folium.LayerControl().add_to(m)
 #Display the folium map
 display(m)
 ```
-<p align="center">
-Script 3. Add the layers, legend, aditional basemaps and layer control to the folium map.
-</p>
+<p align="center">Script 3. Add the layers, legends, additional basemaps, and layer control to the Folium map.</p>
 
 ### Delete the temporary data
-- Clean the resultant geodatabase that contains the resultant layers
-- Clean the base workspace
+- Clean the resultant geodatabase that contains the resultant layers.
+- Clean the base workspace.
 
 ```python
 arcpy.management.Delete("dem.png")
@@ -360,9 +347,7 @@ arcpy.management.Delete("WaterTableAltitude.png")
 arcpy.management.Delete("\\AquiferProperties.gdb\\raster_wgs84")
 os.remove(directoryPath + "\\WellData.geojson")
 ```
-<p align="center">
-Script 3. Delete the temporary data.
-</p>
+<p align="center">Script 3. Delete the temporary data.</p>
 
 ## Interactive map
 - As a result of the execution of the function, an interactive map is generated in which the resulting layers are presented.
