@@ -1,4 +1,12 @@
 # Aquifer properties function
+# Python libraries needed
+Before you use this code you need to install the next python libraries
+- Arcpy
+- Numpy
+- Os
+- Matplotlib
+- Folium
+- IPython.display
 ## Objetive
 Develop a code that shows some of the relevant characteristics of an aquifer (water table altitude and vadose zone thickness) and creates a geodatabase that contains the layers with this information. As inputs for this code, the user needs to supply well points with the depth to water and a Digital Elevation Model (DEM). The output layers are intended to generate a quick visualization of the aquifer conditions, but the results should be verified because the code uses a generic interpolation model that may not adjust in a valid way to the input data. For this reason, the results for this script also include a Standard Error Map that shows the user the accuracy of the interpolation model.
 ## Relevance
