@@ -1,5 +1,5 @@
 # Aquifer properties function
-# Python libraries needed
+## Python libraries needed
 Before you use this code you need to install the next python libraries
 - Arcpy
 - Numpy
